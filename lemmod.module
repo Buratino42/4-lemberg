@@ -1,0 +1,327 @@
+<?php
+/**
+ * Implements hook_node_info()
+ */
+function lemmod_node_info() {
+  return array(
+    'lemmod' => array(
+      'name' => t('lemmod'),
+      'base' => 'lemmod',
+      'description' => t('You can define new lemmod here'),
+      'has_title' => TRUE,
+      'title_label' => t('Lemmod title')
+    )
+  );
+}
+
+/**
+ * Implement hook_form()
+ */
+function lemmod_form($node, $form_state) {
+  return node_content_form($node, $form_state);
+}
+
+/**
+ * Implementation of hook_theme().
+ * DRUPAL WONT SEE THIS HOOK UNTIL YOU CLEAR YOUR CACHE      Создани tpl
+ */
+
+function lemmod_preprocess_node(&$variables) {
+//  dpm($path);
+
+  $path = $variables['vid'];
+  dpm($path);
+//  $path = lemmod_node_last();
+//  $path = drupal_get_path_alias($path);
+//  $path = $node->nid;
+  $result=$path%2;
+  if ($result===0){
+  $variables['theme_hook_suggestions'][] = 'lemmod';
+  } else {
+  $variables['theme_hook_suggestions'][] = 'lemmodnecht';
+  }
+
+
+}
+function lemmod_node_last () {
+
+
+  $result = db_select('node')->fields('node', array('nid'))->execute();
+
+  return $result;
+
+}
+function lemmod_theme_registry_alter(&$theme_registry) {
+
+  $theme_registry['lemmod']['theme paths'][] =  drupal_get_path('module', 'lemmod') .'/theme';
+
+}
+/**
+ * Implements hook_theme().
+ */
+function lemmod_theme() {
+  return array(
+    'lemmod' => array(
+      'render element' => 'elements',
+      'template' => 'lemmod',
+      'path' => drupal_get_path('module', 'lemmod') .'/theme',
+    ),
+    'lemmodnecht' => array(
+      'render element' => 'elements',
+      'template' => 'lemmodnecht',
+      'path' => drupal_get_path('module', 'lemmod') .'/theme',
+    ),
+  );
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function lemmod_block_info() {
+  $blocks['lemmod_posts'] = array(
+    'info' => t('lemmodt posts'),
+    'cache' => DRUPAL_CACHE_PER_ROLE,
+    'region' => 'sidebar_first',
+    'status' => 1,
+    'visibility' => 0,
+  );
+  return $blocks;
+}
+
+function lemmod_three_last () {
+
+
+  $query = db_select('node', 'n')
+    ->fields('n', array('nid', 'title', 'created'))
+    ->condition('n.type', 'lemmod')
+    ->condition('n.uid', 1)
+    ->range(0, 3)
+    ->orderBy('created', 'DESC')
+    ->execute();
+  return $query;
+
+}
+
+/**
+ * Реализация hook_block_view().
+ *
+ * Подготовка содержимого для блока.
+ */
+function lemmod_block_view($delta = '') {
+  switch($delta){
+    case 'lemmod_posts':
+      $block['subject'] = t('lemmodt posts');
+      if(user_access('access content')){
+        $result = lemmod_three_last();
+        $items = array();
+        foreach ($result as $node){
+          $items[] = array(
+            'data' => l($node->title, 'node/' . $node->nid),
+          );
+        }
+
+        if (empty($items)) {
+          $block['content'] = t('Нет доступных публикаций.');
+        } else {
+
+          $block['content'] = theme('item_list', array(
+            'items' => $items));
+        }
+      }
+  }
+  return $block;
+}
+
+function lemmod_views_api() {
+  return array('api' => 3.0);
+}
+/**
+ * Implements hook_views_default_views().
+ */
+function lemmod_views_default_views() {
+  $view = new view();
+  $view->name = 'lemmod_views';
+  $view->description = '';
+  $view->tag = 'default';
+  $view->base_table = 'node';
+  $view->human_name = 'lemmod views';
+  $view->core = 7;
+  $view->api_version = '3.0';
+  $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
+
+  /* Display: Master */
+  $handler = $view->new_display('default', 'Master', 'default');
+  $handler->display->display_options['title'] = 'lemmod views';
+  $handler->display->display_options['use_more_always'] = FALSE;
+  $handler->display->display_options['access']['type'] = 'perm';
+  $handler->display->display_options['cache']['type'] = 'none';
+  $handler->display->display_options['query']['type'] = 'views_query';
+  $handler->display->display_options['exposed_form']['type'] = 'basic';
+  $handler->display->display_options['pager']['type'] = 'some';
+  $handler->display->display_options['pager']['options']['items_per_page'] = '5';
+  $handler->display->display_options['style_plugin'] = 'default';
+  $handler->display->display_options['row_plugin'] = 'fields';
+  /* Field: Content: Title */
+  $handler->display->display_options['fields']['title']['id'] = 'title';
+  $handler->display->display_options['fields']['title']['table'] = 'node';
+  $handler->display->display_options['fields']['title']['field'] = 'title';
+  $handler->display->display_options['fields']['title']['label'] = '';
+  $handler->display->display_options['fields']['title']['alter']['word_boundary'] = FALSE;
+  $handler->display->display_options['fields']['title']['alter']['ellipsis'] = FALSE;
+  /* Sort criterion: Content: Post date */
+  $handler->display->display_options['sorts']['created']['id'] = 'created';
+  $handler->display->display_options['sorts']['created']['table'] = 'node';
+  $handler->display->display_options['sorts']['created']['field'] = 'created';
+  $handler->display->display_options['sorts']['created']['order'] = 'DESC';
+  /* Filter criterion: Content: Published */
+  $handler->display->display_options['filters']['status']['id'] = 'status';
+  $handler->display->display_options['filters']['status']['table'] = 'node';
+  $handler->display->display_options['filters']['status']['field'] = 'status';
+  $handler->display->display_options['filters']['status']['value'] = 1;
+  $handler->display->display_options['filters']['status']['group'] = 1;
+  $handler->display->display_options['filters']['status']['expose']['operator'] = FALSE;
+  /* Filter criterion: Content: Type */
+  $handler->display->display_options['filters']['type']['id'] = 'type';
+  $handler->display->display_options['filters']['type']['table'] = 'node';
+  $handler->display->display_options['filters']['type']['field'] = 'type';
+  $handler->display->display_options['filters']['type']['value'] = array(
+    'lemmod' => 'lemmod',
+  );
+
+  /* Display: Block */
+  $handler = $view->new_display('block', 'Block', 'block');
+
+$views[$view->name] = $view;
+
+// return views
+return $views;
+}
+
+
+function lemmod_webform_select_options_info() {
+  $items = array();
+  if (function_exists('_get_node_titles')) {
+    $items['node_titles'] = array(
+      'title' => t('Node titles'),
+      'options callback' => '_get_node_titles',
+      'callback arguments' => array(
+        'options_source' => 'days',
+        'extra' => array(
+        'options_source' => 'days',
+        ),
+      ),
+    );
+  }
+  return $items;
+}
+
+function _get_node_titles() {
+  $ournewtype = 'lemmod';
+  $sql = 'SELECT nid, title FROM {node} n WHERE n.type = :type';
+  $result = db_query($sql, array(':type' => $ournewtype));
+  $nodeids = array();
+  foreach ($result as $row) {
+    $nodeids[] = $row->title;
+  }
+  return $nodeids;
+}
+
+// REST
+function lemmod_services_resources() {
+  return array(
+    'get_nodes' => array(
+      'index' => array( // 'index' is used when no parameters are passed using GET
+        'help' => 'Retrieves drupal nodes',
+        'callback' => '_lemmod_get_nodes',
+     'access callback' => TRUE,
+        'access arguments' => array('index', 'node'),
+        'access arguments append' => FALSE,
+      ),
+    ),
+    'retrieve' => array( // 'retrieve' is used when a parameter is passed using GET
+      'help' => 'Retrieves a specific node',
+      'callback' => '_lemmod_get_node',
+      'args' => array(
+        array(
+          'name' => 'nid',
+          'optional' => FALSE,
+          'source' => array('path' => 0),
+          'type' => 'int',
+          'description' => t('The node nid to retrieve.'),
+        ),
+      ),
+      'access callback' => TRUE ,
+      'access arguments' => array('view', 'node'),
+      'access arguments append' => FALSE,
+    ),
+    /*
+     *  some other additional methods are
+     *  'create' => POST
+     *  'create' => POST
+     *  'update' => PUT
+     *  'delete' => DELETE
+     */
+  );
+}
+
+function lemmod_permission() {
+  return array(
+    'lemmod get nodes' => array(
+      'title' => t('Get nodes via lemmod REST API'),
+    ),
+  );
+}
+
+
+/**
+ * Access callback function.
+ */
+function _lemmod_access($op = 'view', $type, $args = array()) {
+  switch ($op) {
+    case 'index':
+    case 'view':
+      if ($type == 'node' && user_access('lemmod get nodes')) {
+        return TRUE;
+      }
+      break;
+  }
+}
+
+/**
+ * index callback function.
+ */
+function _lemmod_get_nodes() {
+  $items = array();
+  $query = db_select('node', 'n');
+  $query->fields('n', array('nid', 'title'));
+  $query->orderBy('n.title', 'ASC');
+  $results = $query->execute()->fetchAll();
+  foreach ($results as $r) {
+    $item[] = array(
+      'nid' => $r->nid,
+      'title' => $r->title,
+    );
+  }
+  if (!count($items)) {
+    return services_error('no nodes found, 404');
+  }
+  return $items;
+}
+
+/**
+ * retreive callback function.
+ */
+function _lemmod_get_node($nid) {
+  if (is_numeric($nid)) {
+    $node = node_load($nid);
+    if ($node->nid) {
+      $item = array(
+        'nid' => $node->nid,
+        'title' => $node->title,
+      );
+      return $item;
+    }
+  }
+  return services_error('node not found, 404');
+}
+?>

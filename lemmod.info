@@ -1,0 +1,7 @@
+name = lemmod
+description = custom module
+version = 7.x-1.x-dev
+dependencies[] = views
+dependencies[] = webform
+dependencies[] = link
+core = 7.x

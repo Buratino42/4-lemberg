@@ -1,0 +1,95 @@
+<?php
+/**
+ * Implements hook_install().
+ */
+function lemmod_install() {
+  node_types_rebuild();
+  $types = node_type_get_types();
+  node_add_body_field($types['lemmod']);
+  add_custom_fields();
+}
+/**
+ * Implements hook_uninstall().
+ */
+function lemmod_uninstall() {
+  $ournewtype = 'lemmod';
+  $sql = 'SELECT nid FROM {node} n WHERE n.type = :type';
+  $result = db_query($sql, array(':type' => $ournewtype));
+  $nodeids = array();
+  foreach ($result as $row) {
+    $nodeids[] = $row->nid;
+  }
+  node_delete_multiple($nodeids);
+  delete_custom_fields();
+  node_type_delete($ournewtype);
+  field_purge_batch(500);
+}
+function delete_custom_fields() {
+  foreach (array_keys(_lemmod_installed_fields()) as $field) {
+    field_delete_field($field);
+  }
+  $instances = field_info_instances('node', 'lemmod');
+  foreach ($instances as $instance_name => $fieldinstance) {
+    field_delete_instance($fieldinstance);
+  }
+}
+function _lemmod_installed_fields() {
+  $t = get_t();
+  return array(
+    'lemmod_link' => array(
+      'field_name' => 'lemmod_link',
+      'label' => $t('Lemmons link'),
+      'type' => 'link_field'
+//      'settings' => array(
+//        'attributes' => _link_default_attributes(),
+//        'url' => 0,
+//        'title' => 'none',
+//        'title_value' => 'ho',
+//        'title_maxlength' => 138,
+//        'enable_tokens' => 1,
+//        'display' => array(
+//          'url_cutoff' => 80,
+//        ),
+//      ),
+    )
+  );
+}
+
+function _lemmod_installed_instances() {
+  $t = get_t();
+  return array(
+    'lemmod_link' => array(
+      'field_name' => 'lemmod_link',
+      'type' => 'link_field',
+      'label' => $t('Lemmon link'),
+
+      'settings' => array(
+        'attributes' => _link_default_attributes(),
+        'url' => 0,
+        'title' => 'none',
+
+        'title_maxlength' => 128,
+        'enable_tokens' => 1,
+        'display' => array(
+          'url_cutoff' => 80,
+        ),
+        'attributes' => array(
+          'title' => 'hiii',
+
+        ),
+      ),
+
+    )
+  );
+}
+function add_custom_fields() {
+  foreach (_lemmod_installed_fields() as $field) {
+    field_create_field($field);
+  }
+  foreach (_lemmod_installed_instances() as $fieldinstance) {
+    $fieldinstance['entity_type'] = 'node';
+    $fieldinstance['bundle'] = 'lemmod';
+//    print_r($fieldinstance);
+    field_create_instance($fieldinstance);
+  }
+}
